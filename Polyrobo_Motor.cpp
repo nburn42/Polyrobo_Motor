@@ -16,7 +16,9 @@
 #endif
 
 
-Polyrobo_Motor::Polyrobo_Motor(uint8_t motor_count, uint8_t forward_pin_list [], uint8_t backward_pin_list []) {
+Polyrobo_Motor::Polyrobo_Motor(uint8_t motor_count, const uint8_t forward_pin_list [], const uint8_t backward_pin_list []) {
+    this -> motor_count = motor_count;
+    
     _need_update = new bool [motor_count];
     _max_list = new uint16_t [motor_count];
     _min_list = new uint16_t [motor_count];
@@ -29,7 +31,8 @@ Polyrobo_Motor::Polyrobo_Motor(uint8_t motor_count, uint8_t forward_pin_list [],
     _speed_list = new uint8_t [motor_count];
     _forward_list = new bool [motor_count];
     _backward_list = new bool [motor_count];
-    _target_position_list  = new uint8_t [motor_count];
+    _target_position_list  = new uint16_t [motor_count];
+    current_position_list  = new uint16_t [motor_count];
 
 
     for(int8_t i = 0; i < motor_count; i++) {
@@ -47,6 +50,7 @@ Polyrobo_Motor::Polyrobo_Motor(uint8_t motor_count, uint8_t forward_pin_list [],
         _forward_list[i] = false;
         _backward_list[i] = false;
         _target_position_list[i] = 127;
+        current_position_list[i] = 127;
     }
 }
 
@@ -82,16 +86,16 @@ void Polyrobo_Motor::setSpeed(uint8_t motor_number, bool forward, bool backward,
 
 void Polyrobo_Motor::setPositionGlobal(uint8_t motor_number, uint8_t position, uint8_t speed=HIGH) {
     bool update = false;
-    uint8_t rawPosition = _map(motor_number, position);
+    uint16_t rawPosition = _map(motor_number, position);
     if(_target_position_list[motor_number] != rawPosition) update = true;
     if(_speed_list[motor_number] != speed) update = true;
-    if(_mode_list[motor_number] != false) update = true;
+    if(_mode_list[motor_number] != true) update = true;
 
     if(update) {
         _need_update[motor_number] = true;
         _target_position_list[motor_number] = rawPosition;
         _speed_list[motor_number] = speed;
-        _mode_list[motor_number] = false;
+        _mode_list[motor_number] = true;
     }
 }
 void Polyrobo_Motor::setPositionRelative(uint8_t motor_number, bool direction, uint8_t change, uint8_t speed=HIGH) {
@@ -111,25 +115,26 @@ void Polyrobo_Motor::setPositionRelative(uint8_t motor_number, bool direction, u
 
     if(_target_position_list[motor_number] != rawPosition) update = true;
     if(_speed_list[motor_number] != speed) update = true;
-    if(_mode_list[motor_number] != false) update = true;
+    if(_mode_list[motor_number] != true) update = true;
 
     if(update) {
         _need_update[motor_number] = true;
         _target_position_list[motor_number] = rawPosition;
         _speed_list[motor_number] = speed;
-        _mode_list[motor_number] = false;
+        _mode_list[motor_number] = true;
     }
 }
 void Polyrobo_Motor::execute() {
     for(uint8_t i = 0; i < motor_count; i++) {
         if(_feedback_used_list[i] && _mode_list[i]) {
-            _current_position_list[i] = analogRead(_feedback_pin_list[i]);
-           _close_enough(i);
+            current_position_list[i] = analogRead(_feedback_pin_list[i]);
+            _close_enough(i);
         }
     }
 
     for(uint8_t i = 0; i < motor_count; i++) {
         if(_need_update[i]) {
+            _need_update[i] = false;
             if(_forward_list[i]) {
                 analogWrite(_forward_pin_list[i], _speed_list[i]);
             } else {
@@ -170,26 +175,26 @@ uint8_t Polyrobo_Motor::_unmap(uint8_t motor_number, uint16_t rawPosition) {
 
 void Polyrobo_Motor::_close_enough(uint8_t motor_number) {
     uint16_t gap = 10;
-    uint16_t current = _current_position_list[motor_number];
+    uint16_t current = current_position_list[motor_number];
     uint16_t target = _target_position_list[motor_number];
     bool forward = _forward_list[motor_number];
     bool backward = _backward_list[motor_number];
     if(current < target - gap) {
-        if(forward && !backward) {
-            forward = true;
-            backward = false;  
+        if(!forward || backward) {
+            _forward_list[motor_number] = true;
+            _backward_list[motor_number] = false;  
             _need_update[motor_number] = true;
         }
     } else if (current > target + gap) {
-        if (!forward && backward) {
-            forward = false;
-            backward = true;
+        if (forward || !backward) {
+            _forward_list[motor_number] = false;
+            _backward_list[motor_number] = true;
             _need_update[motor_number] = true;
         }
     } else {
-        if(!forward && !backward) { 
-            forward = false;
-            backward = false;
+        if(forward || backward) { 
+            _forward_list[motor_number] = false;
+            _backward_list[motor_number] = false;
             _need_update[motor_number] = true;
         }
     }

@@ -19,7 +19,7 @@
 
 class Polyrobo_Motor {
     public:
-        Polyrobo_Motor(uint8_t motor_count, uint8_t forward_pin_list [], uint8_t backward_pin_list []);
+        Polyrobo_Motor(uint8_t motor_count, const uint8_t forward_pin_list [], const uint8_t backward_pin_list []);
 
         uint8_t motor_count;
 
@@ -32,17 +32,13 @@ class Polyrobo_Motor {
         
         void execute();
 
-    private:
-
-        uint16_t _map(uint8_t motor_number, uint8_t position);
-        uint8_t _unmap(uint8_t motor_number, uint16_t rawPosition);
-        void _close_enough(uint8_t motor_number);
+        uint16_t *current_position_list;
 
         bool *_need_update;
         uint16_t *_min_list;
         uint16_t *_max_list;
-        uint8_t *_forward_pin_list;
-        uint8_t *_backward_pin_list;
+        const uint8_t *_forward_pin_list;
+        const uint8_t *_backward_pin_list;
         bool *_feedback_used_list;
         uint8_t *_feedback_pin_list;
         bool *_feedback_orientation_list;
@@ -50,8 +46,13 @@ class Polyrobo_Motor {
         uint8_t *_speed_list;
         bool *_forward_list;
         bool *_backward_list;
-        uint8_t *_target_position_list;
-        uint8_t *_current_position_list;
+        uint16_t *_target_position_list;
+    private:
+
+        uint16_t _map(uint8_t motor_number, uint8_t position);
+        uint8_t _unmap(uint8_t motor_number, uint16_t rawPosition);
+        void _close_enough(uint8_t motor_number);
+
 
 };
 
